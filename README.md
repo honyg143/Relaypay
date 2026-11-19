@@ -75,7 +75,13 @@ app/         React + Vite frontend, wagmi + viem (design per brand kit v1.0)
 | Token | tUSD8, `0x456569838f1d43009A91ebA4263147Afd7233483`, 6 decimals |
 | Gas token | tQDAY (testnet) |
 
-Contract address: added here after the testnet deploy.
+Contract address: `0x2E98ceB86D7601FD417D2937D1DcB543C12B7196`
+([explorer](https://explorer-test.qday.info/address/0x2E98ceB86D7601FD417D2937D1DcB543C12B7196)),
+deployed 20 Nov 2026, deploy tx
+`0xb72fb4bb183b9dd4642685f9b94099a123656e09ed7f0184f13dc4057dba6e3c`.
+Note: the Aevum explorer's contract verification is not working yet, so
+the contract is not verified there; the full source is in this repo
+under `contracts/src/RelayPay.sol`.
 
 ## Real-world utility
 
@@ -110,4 +116,8 @@ cd app && npm install && npm run dev
 - Contract phase: `RelayPay.sol` written, 27 Foundry tests passing,
   including the RelayDrops functions (escrow drops + claims) that were
   added to the plan on 19 Nov, all before the testnet deploy so the
-  deployed contract will not need to change. Deploy and runner are next.
+  deployed contract will not need to change.
+- 20 Nov: contract deployed to Aevum Testnet at
+  `0x2E98ceB86D7601FD417D2937D1DcB543C12B7196` and verified live via
+  RPC (code present, `token()` returns tUSD8). Runner code is ready and
+  goes live once the agent wallet exists. Frontend is next.
