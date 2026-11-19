@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 /// @notice Minimal ERC-20 interface, enough for tUSD8 transfers.
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
 }
@@ -11,9 +12,11 @@ interface IERC20 {
 /// @title PayRelay
 /// @notice Batch stablecoin payments on Aevum Testnet, with scheduled batches
 ///         executed by an owner-approved agent inside onchain caps.
-/// @dev Funding model: funds stay in the owner's wallet. The owner approves
-///      this contract for an allowance, and the contract moves funds with
-///      transferFrom. The contract never holds custody.
+/// @dev Funding model: for pay-now and scheduled batches, funds stay in the
+///      owner's wallet. The owner approves this contract for an allowance,
+///      and the contract moves funds with transferFrom. The one exception
+///      is RelayDrops: a drop locks its total in this contract as escrow,
+///      because claims happen later, one wallet at a time.
 ///      EVM target is Shanghai (Aevum has no Cancun opcodes).
 contract PayRelay {
     uint256 public constant MAX_BATCH = 50;
@@ -44,9 +47,22 @@ contract PayRelay {
         uint256[] amounts;
     }
 
+    struct Drop {
+        address giver;
+        uint256 total;
+        uint256 claimedTotal;
+        uint256 claimDeadline;
+        bool closed;
+        address[] recipients;
+    }
+
     mapping(address => AgentPermission) private _agents;
     Schedule[] private _schedules;
     mapping(address => uint256[]) private _scheduleIdsOf;
+    Drop[] private _drops;
+    mapping(address => uint256[]) private _dropIdsOf;
+    mapping(uint256 => mapping(address => uint256)) private _allocations;
+    mapping(uint256 => mapping(address => bool)) private _claimed;
 
     event BatchPaid(address indexed owner, uint256 total, uint256 count);
     event AgentSet(
@@ -57,6 +73,9 @@ contract PayRelay {
     event BatchScheduleExecuted(uint256 indexed id, uint256 total, uint256 count);
     event BatchScheduleFailed(uint256 indexed id, string reason);
     event BatchScheduleCancelled(uint256 indexed id);
+    event DropCreated(uint256 indexed id, address indexed giver, uint256 total, uint256 count, uint256 claimDeadline);
+    event DropClaimed(uint256 indexed id, address indexed claimer, uint256 amount);
+    event DropReclaimed(uint256 indexed id, address indexed giver, uint256 amount);
 
     constructor(address token_) {
         require(token_ != address(0), "token is zero address");
@@ -188,6 +207,78 @@ contract PayRelay {
     }
 
     // ------------------------------------------------------------------
+    // RelayDrops (escrow drops with a claim page)
+    // ------------------------------------------------------------------
+
+    /// @notice Create a drop: the total is locked in this contract as
+    ///         escrow, and each listed recipient can claim their amount
+    ///         once, before the claim deadline.
+    /// @dev Duplicate recipients are rejected: one wallet, one allocation.
+    function createDrop(address[] calldata recipients, uint256[] calldata amounts, uint256 claimDeadline)
+        external
+        returns (uint256 id)
+    {
+        require(claimDeadline > block.timestamp, "claim deadline in the past");
+        uint256 total = _validateBatch(recipients, amounts);
+        for (uint256 i = 0; i < recipients.length; i++) {
+            for (uint256 j = i + 1; j < recipients.length; j++) {
+                require(recipients[i] != recipients[j], "duplicate recipient");
+            }
+        }
+
+        require(token.transferFrom(msg.sender, address(this), total), "escrow transfer failed");
+
+        id = _drops.length;
+        Drop storage d = _drops.push();
+        d.giver = msg.sender;
+        d.total = total;
+        d.claimedTotal = 0;
+        d.claimDeadline = claimDeadline;
+        d.closed = false;
+        d.recipients = recipients;
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _allocations[id][recipients[i]] = amounts[i];
+        }
+        _dropIdsOf[msg.sender].push(id);
+
+        emit DropCreated(id, msg.sender, total, recipients.length, claimDeadline);
+    }
+
+    /// @notice Claim your amount from a drop. Only a listed wallet, only
+    ///         once, only before the claim deadline.
+    function claim(uint256 id) external {
+        require(id < _drops.length, "unknown drop");
+        Drop storage d = _drops[id];
+        require(!d.closed, "drop closed");
+        require(block.timestamp <= d.claimDeadline, "claim deadline passed");
+        uint256 amount = _allocations[id][msg.sender];
+        require(amount > 0, "not on the list");
+        require(!_claimed[id][msg.sender], "already claimed");
+
+        _claimed[id][msg.sender] = true;
+        d.claimedTotal += amount;
+        require(token.transfer(msg.sender, amount), "claim transfer failed");
+        emit DropClaimed(id, msg.sender, amount);
+    }
+
+    /// @notice After the claim deadline, the giver takes back whatever was
+    ///         not claimed, and the drop closes.
+    function reclaimUnclaimed(uint256 id) external returns (uint256 remaining) {
+        require(id < _drops.length, "unknown drop");
+        Drop storage d = _drops[id];
+        require(d.giver == msg.sender, "not the giver");
+        require(!d.closed, "drop closed");
+        require(block.timestamp > d.claimDeadline, "claim deadline not passed");
+
+        remaining = d.total - d.claimedTotal;
+        d.closed = true;
+        if (remaining > 0) {
+            require(token.transfer(msg.sender, remaining), "reclaim transfer failed");
+        }
+        emit DropReclaimed(id, msg.sender, remaining);
+    }
+
+    // ------------------------------------------------------------------
     // Views
     // ------------------------------------------------------------------
 
@@ -232,6 +323,39 @@ contract PayRelay {
                 j++;
             }
         }
+    }
+
+    function getDrop(uint256 id)
+        external
+        view
+        returns (
+            address giver,
+            uint256 total,
+            uint256 claimedTotal,
+            uint256 claimDeadline,
+            bool closed,
+            address[] memory recipients
+        )
+    {
+        require(id < _drops.length, "unknown drop");
+        Drop storage d = _drops[id];
+        return (d.giver, d.total, d.claimedTotal, d.claimDeadline, d.closed, d.recipients);
+    }
+
+    function dropIdsOf(address giver) external view returns (uint256[] memory) {
+        return _dropIdsOf[giver];
+    }
+
+    function dropCount() external view returns (uint256) {
+        return _drops.length;
+    }
+
+    function allocationOf(uint256 id, address wallet) external view returns (uint256) {
+        return _allocations[id][wallet];
+    }
+
+    function hasClaimed(uint256 id, address wallet) external view returns (bool) {
+        return _claimed[id][wallet];
     }
 
     // ------------------------------------------------------------------

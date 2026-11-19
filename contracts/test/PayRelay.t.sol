@@ -294,4 +294,91 @@ contract PayRelayTest {
         assertEq(due.length, 1, "one due");
         assertEq(due[0], dueSoon, "due id matches");
     }
+
+    // --------------------------------------------------------------
+    // RelayDrops
+    // --------------------------------------------------------------
+
+    function _drop(uint256 claimDeadline) internal returns (uint256 id) {
+        (address[] memory recipients, uint256[] memory amounts) = _batch();
+        vm.prank(OWNER);
+        id = relay.createDrop(recipients, amounts, claimDeadline);
+    }
+
+    function testCreateDropLocksEscrow() public {
+        uint256 id = _drop(block.timestamp + 1 days);
+        assertEq(token.balanceOf(address(relay)), 150e6, "escrow holds the total");
+        assertEq(relay.allocationOf(id, R1), 100e6, "R1 allocation");
+        assertEq(relay.allocationOf(id, R2), 50e6, "R2 allocation");
+        assertEq(relay.dropIdsOf(OWNER).length, 1, "giver drop list");
+    }
+
+    function testListedWalletClaimsOnce() public {
+        uint256 id = _drop(block.timestamp + 1 days);
+        vm.prank(R1);
+        relay.claim(id);
+        assertEq(token.balanceOf(R1), 100e6, "R1 received its amount");
+        assertTrue(relay.hasClaimed(id, R1), "claimed flag set");
+        vm.prank(R1);
+        vm.expectRevert();
+        relay.claim(id);
+    }
+
+    function testUnlistedWalletCannotClaim() public {
+        uint256 id = _drop(block.timestamp + 1 days);
+        vm.prank(STRANGER);
+        vm.expectRevert();
+        relay.claim(id);
+    }
+
+    function testDuplicateRecipientRejected() public {
+        address[] memory recipients = new address[](2);
+        recipients[0] = R1;
+        recipients[1] = R1;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 10e6;
+        amounts[1] = 10e6;
+        vm.prank(OWNER);
+        vm.expectRevert();
+        relay.createDrop(recipients, amounts, block.timestamp + 1 days);
+    }
+
+    function testClaimAfterDeadlineFails() public {
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = _drop(deadline);
+        vm.warp(deadline + 1);
+        vm.prank(R1);
+        vm.expectRevert();
+        relay.claim(id);
+    }
+
+    function testReclaimReturnsOnlyUnclaimed() public {
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = _drop(deadline);
+        vm.prank(R1);
+        relay.claim(id);
+        uint256 ownerBefore = token.balanceOf(OWNER);
+        vm.warp(deadline + 1);
+        vm.prank(OWNER);
+        uint256 remaining = relay.reclaimUnclaimed(id);
+        assertEq(remaining, 50e6, "only R2 share comes back");
+        assertEq(token.balanceOf(OWNER), ownerBefore + 50e6, "giver refunded");
+        assertEq(token.balanceOf(address(relay)), 0, "escrow empty after close");
+    }
+
+    function testReclaimBeforeDeadlineFails() public {
+        uint256 id = _drop(block.timestamp + 1 days);
+        vm.prank(OWNER);
+        vm.expectRevert();
+        relay.reclaimUnclaimed(id);
+    }
+
+    function testStrangerCannotReclaim() public {
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = _drop(deadline);
+        vm.warp(deadline + 1);
+        vm.prank(STRANGER);
+        vm.expectRevert();
+        relay.reclaimUnclaimed(id);
+    }
 }

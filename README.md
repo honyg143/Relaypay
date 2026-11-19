@@ -107,7 +107,7 @@ cd app && npm install && npm run dev
 - Day 1 (16 Nov): network and token verified, repo and scaffold set up.
 - 19 Nov: renamed AevumPay to PayRelay, brand kit v1.0 locked, frontend
   design prototype received as the design reference.
-- Contract phase: `PayRelay.sol` written, 19 Foundry tests passing.
-  RelayDrops functions (escrow drops + claim page) were added to the plan
-  on 19 Nov and go into the contract before the testnet deploy, so the
+- Contract phase: `PayRelay.sol` written, 27 Foundry tests passing,
+  including the RelayDrops functions (escrow drops + claims) that were
+  added to the plan on 19 Nov, all before the testnet deploy so the
   deployed contract will not need to change. Deploy and runner are next.

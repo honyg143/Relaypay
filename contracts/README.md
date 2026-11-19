@@ -4,8 +4,11 @@ Solidity + Foundry. EVM target is Shanghai, Aevum Testnet has no Cancun opcodes 
 
 ## Contract: `src/PayRelay.sol`
 
-One contract, no custody. Funds stay in the owner's wallet, the owner gives
-this contract an allowance, and payments move with `transferFrom`.
+One contract. For pay-now and scheduled batches there is no custody:
+funds stay in the owner's wallet, the owner gives this contract an
+allowance, and payments move with `transferFrom`. RelayDrops are the one
+exception, a drop locks its total in the contract as escrow because
+claims happen later.
 
 - `batchPay(recipients, amounts)` pays a batch now, from the caller.
 - `setAgent(agent, perBatchCap, totalCap, validUntil)` gives an agent a
@@ -19,8 +22,15 @@ this contract an allowance, and payments move with `transferFrom`.
   and caps, then pays. If the owner's balance or allowance is gone, the
   schedule is marked `Failed` with a reason instead of paying partially.
 - `cancelSchedule(id)` is owner-only, for pending schedules.
+- `createDrop(recipients, amounts, claimDeadline)` locks the batch total
+  in the contract as escrow and stores one allocation per listed wallet.
+  Duplicate recipients are rejected.
+- `claim(id)` pays a listed wallet its amount, once, before the deadline.
+- `reclaimUnclaimed(id)` is giver-only, after the deadline, and returns
+  whatever was not claimed.
 - Views for the app and the runner: `getSchedule`, `scheduleIdsOf`,
-  `scheduleCount`, `agentInfo`, `dueScheduleIds`.
+  `scheduleCount`, `agentInfo`, `dueScheduleIds`, `getDrop`, `dropIdsOf`,
+  `dropCount`, `allocationOf`, `hasClaimed`.
 
 Token: tUSD8 on Aevum Testnet, `0x456569838f1d43009A91ebA4263147Afd7233483`, 6 decimals.
 
@@ -33,10 +43,13 @@ cd contracts
 forge test
 ```
 
-19 tests cover batch payment totals and validation, cap rejections at
+27 tests cover batch payment totals and validation, cap rejections at
 schedule creation, due-time and agent-only execution, spent tracking,
 total-cap enforcement across schedules, cancel and revoke blocking
-execution, and the clean `Failed` path when the allowance is removed.
+execution, the clean `Failed` path when the allowance is removed, and
+RelayDrops: escrow locking, listed-only claims, no double claim,
+duplicate rejection, deadline enforcement, and reclaim of only the
+unclaimed remainder.
 The token used in tests is `test/MockUSD8.sol`, a test-only stand-in that
 is never deployed.
 
