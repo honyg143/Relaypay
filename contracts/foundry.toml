@@ -1,0 +1,10 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+cache_path = "cache"
+solc_version = "0.8.24"
+# Aevum Testnet is Shanghai EVM. Cancun opcodes must never be emitted.
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200

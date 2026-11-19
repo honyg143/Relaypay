@@ -1,39 +1,62 @@
-# AevumPay — stablecoin payments for humans and AI agents
+# PayRelay, stablecoin payments for humans and AI agents
 
+> Prepare. Review. Relay.
 > Built for Aevum Builder Challenge #1 (QDay) on DoraHacks.
-> Build window: 16 Nov – 11 Dec 2026. All code in this repo was written inside that window.
+> Build window: 16 Nov to 11 Dec 2026. All code in this repo was written inside that window.
 
 ## Problem
 
-Paying people and AI agents in stablecoins is still clunky: one-off transfers,
-no scoped permissions for agents, no automation that pays on schedule without
-asking the user to sign again at due time. AevumPay is a focused payment app
-on Aevum Testnet that fixes exactly that.
+Paying people in stablecoins is still one transfer at a time, and paying
+through an AI agent today means either handing the agent your keys or
+signing again at the exact moment the payment is due. PayRelay fixes both
+on Aevum Testnet: build a batch once, then pay it now, or schedule the
+whole batch and let an agent pay it at due time inside caps you set.
 
 ## What it does
 
-- **Pay** — single tUSD8 payment: add recipient, review, sign, done.
-- **Bulk Pay** — one signature, many recipients (2–10).
-- **CSV Upload** — upload a CSV, validate rows, preview, then pay.
-- **Scheduled Payments** — agentic automation: set it once, the agent pays
-  itself at due time inside caps you set. No sign-when-due.
-- **Agent Pay** — give an AI agent a scoped allowance (per-payment cap +
-  total cap), track spend, revoke anytime. Every agent payment is logged
-  onchain.
-- **Activity** — every payment with explorer links.
-- **Review before sign** — totals, per-recipient amounts and sanity checks
-  shown before every signature (Intent Firewall style safety step).
+Five pages, nothing else:
+
+- **Dashboard** - tUSD8 balance, network status, upcoming scheduled
+  batches, recent activity from contract events, agent permission summary.
+- **Bulk Pay** - build a batch by hand (address + amount rows), review, sign once.
+- **CSV Upload** - upload a CSV, invalid rows are flagged with reasons,
+  clean rows become a batch.
+- **AI** - describe a batch in plain words, the AI drafts it, you edit,
+  review and sign. The AI never pays and never signs.
+- **Scheduled Payments** - put a schedule on a whole batch. At due time
+  the agent pays it automatically, no second signature, inside onchain
+  caps (per-batch cap, total cap, expiry). Cancel a schedule or revoke
+  the agent at any time.
+
+Every flow passes a Review screen before any signature: recipients,
+amounts, total, and sanity checks (balance, duplicates, new payees, cap
+headroom for schedules).
+
+## How scheduling works
+
+1. The owner sets an agent permission onchain: `setAgent` with a
+   per-batch cap, a total cap and an expiry. Caps live in the contract,
+   not in the runner, so the runner cannot exceed them.
+2. The owner creates a batch in the app and schedules it:
+   `createBatchSchedule` stores the whole batch onchain. Caps are checked
+   at creation, so a schedule that could never execute is never created.
+3. A small runner watches `dueScheduleIds()`. When a batch is due, it
+   calls `executeBatchSchedule`. The contract re-checks everything, then
+   pays from the owner's wallet via allowance. Funds are never in the
+   contract's custody.
+4. If the owner's balance or allowance is gone at due time, the schedule
+   is marked `Failed` with a reason onchain instead of paying partially.
 
 ## Architecture
 
 ```
-app (Next.js + wagmi/viem, light premium UI, sidebar navigation)
-  Home | Pay | Bulk Pay | CSV Upload | Scheduled Payments | Agent Pay | Activity
-contracts (Solidity + Foundry)
-  pay / batchPay / setAgent / agentPay / revokeAgent
-  createSchedule / executeSchedule / cancelSchedule
-runner (small script)
-  watches due schedules, calls executeSchedule when due
+contracts/   Solidity + Foundry, EVM Shanghai
+  src/PayRelay.sol    batchPay, setAgent, revokeAgent,
+                      createBatchSchedule, executeBatchSchedule,
+                      cancelSchedule, views for app and runner
+  test/               19 Foundry tests, dependency-free (forge test)
+runner/      Node + viem poller that executes due schedules (see its README)
+app/         React + Vite frontend, wagmi + viem (design per brand kit v1.0)
 ```
 
 ## Network (verified 16 Nov 2026)
@@ -44,45 +67,40 @@ runner (small script)
 | Chain ID | 44005 (`0xabe5`) |
 | RPC | https://rpc-test.qday.info |
 | Explorer | https://explorer-test.qday.info (Blockscout) |
-| Faucet (gas $QDAY) | https://faucet.qday.info |
-| Token | tUSD8 |
-| tUSD8 contract | `0x456569838f1d43009A91ebA4263147Afd7233483` |
-| tUSD8 decimals | 6 |
-| tUSD8 holders (16 Nov) | 193 |
+| Token | tUSD8, `0x456569838f1d43009A91ebA4263147Afd7233483`, 6 decimals |
+| Gas token | tQDAY (testnet) |
 
-## Tech used
+Contract address: added here after the testnet deploy.
 
-Solidity, Foundry, React (Next.js), wagmi/viem, Tailwind CSS.
+## Real-world utility
+
+- Freelancer and team payroll: one batch, one signature, or scheduled
+  for payday with the agent paying inside caps.
+- Merchant and supplier payments: a batch built from a CSV of invoices,
+  scheduled for the due date.
+- Agent workflows: an AI agent executes due batches inside limits its
+  owner set, with a full onchain audit trail and revoke at any time.
 
 ## Setup
 
 ```bash
-# 1. Install dependencies (app)
-npm install
+# Contracts and tests
+cd contracts && forge test
 
-# 2. Copy env and fill in the deployed contract address
-cp .env.example .env.local
-
-# 3. Run the app
-npm run dev
+# Frontend (once the app lands in app/)
+cd app && npm install && npm run dev
 ```
-
-Foundry contract setup lives in `contracts/` (from 17 Nov, contract phase).
-
-## Real-world utility
-
-- Merchant payment: pay a merchant in tUSD8 in three clicks.
-- Team / freelancer payroll: bulk pay the whole team in one signature.
-- Agent workflows: an AI agent pays its own tools and suppliers inside
-  caps its owner set, with a full onchain audit trail.
 
 ## Submission
 
 - Hackathon: https://dorahacks.io/hackathon/qday
 - Prize pool: $1,500 USDT (1st $800 / 2nd $500 / 3rd $200)
-- Deadline: 11 Dec 2026, 1:00 PM PKT
+- Deadline: 11 Dec 2026, 1:00 PM PKT. Our submit target: 9 Dec 2026.
 
 ## Status
 
-- Day 1 (16 Nov): network + token verified, repo + scaffold set up.
-  Contract phase starts 17 Nov.
+- Day 1 (16 Nov): network and token verified, repo and scaffold set up.
+- 19 Nov: renamed AevumPay to PayRelay, brand kit v1.0 locked, frontend
+  design prototype received as the design reference.
+- Contract phase: `PayRelay.sol` written, 19 Foundry tests passing.
+  Deploy and runner are next.
