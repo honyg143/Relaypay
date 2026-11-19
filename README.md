@@ -14,7 +14,7 @@ whole batch and let an agent pay it at due time inside caps you set.
 
 ## What it does
 
-Five pages, nothing else:
+Six pages, nothing else:
 
 - **Dashboard** - tUSD8 balance, network status, upcoming scheduled
   batches, recent activity from contract events, agent permission summary.
@@ -27,6 +27,11 @@ Five pages, nothing else:
   the agent pays it automatically, no second signature, inside onchain
   caps (per-batch cap, total cap, expiry). Cancel a schedule or revoke
   the agent at any time.
+- **RelayDrops** - the reverse of Bulk Pay. The giver locks a total into
+  contract escrow for a list of wallets and shares a claim page. Each
+  listed wallet claims its own amount, once. Anything unclaimed returns
+  to the giver after the claim deadline, so funds are never wasted on
+  dead wallets.
 
 Every flow passes a Review screen before any signature: recipients,
 amounts, total, and sanity checks (balance, duplicates, new payees, cap
@@ -103,4 +108,6 @@ cd app && npm install && npm run dev
 - 19 Nov: renamed AevumPay to PayRelay, brand kit v1.0 locked, frontend
   design prototype received as the design reference.
 - Contract phase: `PayRelay.sol` written, 19 Foundry tests passing.
-  Deploy and runner are next.
+  RelayDrops functions (escrow drops + claim page) were added to the plan
+  on 19 Nov and go into the contract before the testnet deploy, so the
+  deployed contract will not need to change. Deploy and runner are next.
