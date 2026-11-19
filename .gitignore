@@ -5,6 +5,8 @@ dist/
 build/
 .env
 .env.local
+runner/runner.env
+runner/runner.log
 coverage/
 cache/
 *.log

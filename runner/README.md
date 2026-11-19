@@ -18,5 +18,18 @@ Small Node + viem script, no framework. Design:
   the error and moves on. Every poll and execution is logged with time,
   schedule id, and transaction hash or error.
 
-Status: implemented after the contract deploys to Aevum Testnet, together
-with the first end-to-end scheduled payment test.
+Status: code written and checked on 19 Nov 2026 (syntax verified, viem
+installed, config guard tested: without a contract address it stops with
+a clear error instead of running blind). It goes live after the contract
+deploys to Aevum Testnet: fill `runner.env` from `runner.env.example`
+(contract address + agent key), then `npm install` and `npm start`. The
+first end-to-end scheduled payment test runs at that point.
+
+Run it:
+
+```bash
+cd runner
+cp runner.env.example runner.env   # fill in the real values
+npm install
+npm start
+```

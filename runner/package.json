@@ -1,0 +1,1 @@
+{"dependencies":{"viem":"^2.21.0"},"description":"PayRelay agent runner: polls for due batch schedules and executes them inside onchain caps.","name":"payrelay-runner","private":true,"scripts":{"start":"node index.js"},"type":"module","version":"1.0.0"}
