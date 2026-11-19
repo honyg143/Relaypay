@@ -1,8 +1,8 @@
-# PayRelay runner (agent)
+# RelayPay runner (agent)
 
 Small Node + viem script, no framework. Design:
 
-- Polls the PayRelay contract's `dueScheduleIds()` view every 30 to 60
+- Polls the RelayPay contract's `dueScheduleIds()` view every 30 to 60
   seconds. It does not scan events, so the Aevum `eth_getLogs` limit of
   1,000 blocks per call does not apply to it.
 - For each due schedule it re-reads the schedule onchain, then calls

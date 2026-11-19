@@ -1,6 +1,6 @@
-# Deploy PayRelay to Aevum Testnet
+# Deploy RelayPay to Aevum Testnet
 
-Contract: `src/PayRelay.sol` (single file, no imports).
+Contract: `src/RelayPay.sol` (single file, no imports).
 Constructor argument, the tUSD8 token:
 `0x456569838f1d43009A91ebA4263147Afd7233483`
 
@@ -18,12 +18,12 @@ faucet on 19 Nov 2026 (1 tQDAY + 5 tUSD8, verified onchain).
 1. In MetaMask, add the Aevum Testnet network (chain ID 44005, RPC and
    explorer above, currency symbol tQDAY) and switch to it with the
    owner wallet.
-2. Open https://remix.ethereum.org, create a file `PayRelay.sol` and
-   paste the full source of `contracts/src/PayRelay.sol` from this repo.
+2. Open https://remix.ethereum.org, create a file `RelayPay.sol` and
+   paste the full source of `contracts/src/RelayPay.sol` from this repo.
 3. In the Solidity Compiler tab: version 0.8.24, and under Advanced
    Configurations set EVM Version to **shanghai**. Compile.
 4. In Deploy & Run: Environment "Injected Provider - MetaMask", contract
-   `PayRelay`, and in the constructor field enter the tUSD8 address
+   `RelayPay`, and in the constructor field enter the tUSD8 address
    above. Click Deploy and confirm in MetaMask.
 5. Send the deployed contract address back. It gets verified onchain
    (code present, `token()` returns the tUSD8 address), written into
@@ -36,7 +36,7 @@ faucet on 19 Nov 2026 (1 tQDAY + 5 tUSD8, verified onchain).
 
 ```bash
 cd contracts
-forge create src/PayRelay.sol:PayRelay \
+forge create src/RelayPay.sol:RelayPay \
   --rpc-url https://rpc-test.qday.info \
   --private-key <OWNER_PRIVATE_KEY> \
   --constructor-args 0x456569838f1d43009A91ebA4263147Afd7233483

@@ -1,6 +1,6 @@
-// PayRelay runner (agent).
+// RelayPay runner (agent).
 //
-// Polls the PayRelay contract for batch schedules that are due, and
+// Polls the RelayPay contract for batch schedules that are due, and
 // executes them from the agent wallet. The contract enforces the caps,
 // the expiry and the due time onchain, so this runner is never trusted:
 // the worst it can do is pay a due schedule early by a few seconds of

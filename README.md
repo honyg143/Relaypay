@@ -1,4 +1,4 @@
-# PayRelay, stablecoin payments for humans and AI agents
+# RelayPay, stablecoin payments for humans and AI agents
 
 > Prepare. Review. Relay.
 > Built for Aevum Builder Challenge #1 (QDay) on DoraHacks.
@@ -8,7 +8,7 @@
 
 Paying people in stablecoins is still one transfer at a time, and paying
 through an AI agent today means either handing the agent your keys or
-signing again at the exact moment the payment is due. PayRelay fixes both
+signing again at the exact moment the payment is due. RelayPay fixes both
 on Aevum Testnet: build a batch once, then pay it now, or schedule the
 whole batch and let an agent pay it at due time inside caps you set.
 
@@ -56,7 +56,7 @@ headroom for schedules).
 
 ```
 contracts/   Solidity + Foundry, EVM Shanghai
-  src/PayRelay.sol    batchPay, setAgent, revokeAgent,
+  src/RelayPay.sol    batchPay, setAgent, revokeAgent,
                       createBatchSchedule, executeBatchSchedule,
                       cancelSchedule, views for app and runner
   test/               19 Foundry tests, dependency-free (forge test)
@@ -105,9 +105,9 @@ cd app && npm install && npm run dev
 ## Status
 
 - Day 1 (16 Nov): network and token verified, repo and scaffold set up.
-- 19 Nov: renamed AevumPay to PayRelay, brand kit v1.0 locked, frontend
+- 19 Nov: renamed AevumPay to RelayPay, brand kit v1.0 locked, frontend
   design prototype received as the design reference.
-- Contract phase: `PayRelay.sol` written, 27 Foundry tests passing,
+- Contract phase: `RelayPay.sol` written, 27 Foundry tests passing,
   including the RelayDrops functions (escrow drops + claims) that were
   added to the plan on 19 Nov, all before the testnet deploy so the
   deployed contract will not need to change. Deploy and runner are next.

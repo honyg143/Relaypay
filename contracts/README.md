@@ -1,8 +1,8 @@
-# PayRelay contracts
+# RelayPay contracts
 
 Solidity + Foundry. EVM target is Shanghai, Aevum Testnet has no Cancun opcodes (see `foundry.toml`).
 
-## Contract: `src/PayRelay.sol`
+## Contract: `src/RelayPay.sol`
 
 One contract. For pay-now and scheduled batches there is no custody:
 funds stay in the owner's wallet, the owner gives this contract an
@@ -57,7 +57,7 @@ is never deployed.
 
 ```bash
 cd contracts
-forge create src/PayRelay.sol:PayRelay \
+forge create src/RelayPay.sol:RelayPay \
   --rpc-url https://rpc-test.qday.info \
   --constructor-args 0x456569838f1d43009A91ebA4263147Afd7233483 \
   --private-key <deployer key>
